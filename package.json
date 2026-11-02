@@ -1,0 +1,11 @@
+{
+  "name": "international-motors-tariff-refund-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 4179 --bind 127.0.0.1",
+    "check": "node --check app.js && node --check data.js && node --check domain.js",
+    "test": "node --test domain.test.js"
+  }
+}

@@ -1,103 +1,75 @@
 // Synthetic demonstration data. Names, entries and amounts are fictional.
-export const REQUEST_YEAR = 2026;
-export const FIRST_NEW_SEQUENCE = 4812;
+// Process modelled on the publicly documented CAPE workflow (CBP Trade Information Notice, April 2026).
+export const YEAR = 2026;
+export const FIRST_JOB = 118207;
+export const FIRST_CLAIM = 4812;
+export const PROCESSING_MS = 3500; // simulated ACE processing time per stage
 
 export const account = {
   userId: 'im.trade.compliance',
   displayName: 'Owen Gallagher',
+  title: 'Trade Compliance Manager',
   organization: 'International Motors, LLC',
-};
-
-export const importerProfile = {
-  iorName: 'International Motors, LLC',
+  accountType: 'Importer',
   iorNumber: '36-4410987-00',
-  contactName: 'Owen Gallagher',
-  contactEmail: 'owen.gallagher@intl-motors.example',
+  ach: { bank: 'Fifth Lakes Bank, N.A.', last4: '4471', status: 'Active — refunds', updated: '2026-04-14' },
 };
 
-export const filers = [
-  { code: 'LKS', name: 'Lakeshore Customs Brokerage' },
-  { code: 'GLT', name: 'Great Lakes Trade Services' },
+export const FILE_STATUS = {
+  processing: 'In process',
+  accepted: 'Accepted',
+  failedInitial: 'Failed initial validation',
+  rejectedBatch: 'Rejected by batch validation',
+};
+export const CLAIM_STATUS = {
+  processing: 'In process',
+  accepted: 'Accepted',
+  acceptedErrors: 'Accepted with Error(s)',
+  rejected: 'Rejected',
+};
+
+// Simulated ACE entry summary records for this importer of record.
+// ch99: dutiable IEEPA Chapter 99 lines declared on the entry summary.
+const e = (entry, type, date, liq, description, ieepaDutyUsd, interestUsd, ch99, ior = '36-4410987-00') =>
+  ({ entry, type, date, liquidation: liq, description, ieepaDutyUsd, interestUsd, ch99, ior });
+
+export const aceEntries = [
+  // The six Lakeshore entries missing from the refund batches.
+  e('LKS-2541187-3', '01', '2025-12-04', 'Liquidated 2026-10-16', 'SCR catalyst assemblies', 98400, 4610, ['9903.01.24', '9903.01.25']),
+  e('LKS-2541309-8', '01', '2025-12-18', 'Liquidated 2026-10-30', 'NOx sensor modules', 61250, 2870, ['9903.01.24', '9903.01.25']),
+  e('LKS-2541462-1', '01', '2026-01-08', 'Unliquidated', 'Diesel particulate filters', 74900, 3420, ['9903.01.24', '9903.01.25']),
+  e('LKS-2541598-6', '01', '2026-01-22', 'Unliquidated', 'DEF dosing modules', 52300, 2360, ['9903.01.24', '9903.01.25']),
+  e('LKS-2541744-2', '01', '2026-02-05', 'Unliquidated', 'Aftertreatment exhaust assemblies', 81150, 3690, ['9903.01.24', '9903.01.25']),
+  e('LKS-2541820-9', '01', '2026-02-12', 'Unliquidated', 'DEF tank header assemblies', 44600, 1990, ['9903.01.24', '9903.01.25']),
+  // Previously claimed through Great Lakes Trade Services batches.
+  e('GLT-7730412-5', '01', '2025-04-17', 'Reliquidated 2026-07-02', 'Chassis brackets', 41200, 1980, ['9903.01.25']),
+  e('GLT-7730598-1', '01', '2025-05-02', 'Reliquidated 2026-07-02', 'Gear housings', 28650, 1370, ['9903.01.25']),
+  e('GLT-7741106-2', '01', '2025-08-06', 'Unliquidated', 'Wiring harness assemblies', 52400, 2110, ['9903.01.24', '9903.01.25']),
+  e('GLT-7741320-7', '01', '2025-08-21', 'Unliquidated', 'Lighting assemblies', 19880, 790, ['9903.01.25']),
+  e('GLT-7752218-4', '01', '2025-10-14', 'Unliquidated', 'Air brake valves', 23760, 690, ['9903.01.25']),
+  // Entries that fail entry-level validation.
+  e('GLT-7760031-6', '01', '2025-11-03', 'Unliquidated', 'Seat frames (USMCA, no IEEPA lines)', 0, 0, []),
+  e('GLT-7709914-2', '01', '2024-11-20', 'Liquidation final 2025-10-03', 'Mirror assemblies', 0, 0, []),
 ];
 
-export const documentTypes = ['Refund package', 'Entry summary', 'Commercial invoice', 'Other supporting document'];
-
-export const STATUS = {
-  ready: 'Ready for broker submission',
-  submitted: 'Submitted by broker',
-  approved: 'Refund approved',
-};
-
-const seededEntry = (entry, date, hts, description, duty) => ({ entry, date, hts, description, dutyUsd: duty });
+const job = (n, fileName, uploadedBy, uploadedAt, entryCount, fileStatus, claim, entries = [], errors = []) =>
+  ({ job: `J-${YEAR}-${n}`, fileName, uploadedBy, uploadedAt, entryCount, fileStatus, claim, entries, errors });
 
 export function seedState() {
   return {
-    nextSequence: FIRST_NEW_SEQUENCE,
+    nextJob: FIRST_JOB,
+    nextClaim: FIRST_CLAIM,
     session: null,
-    requests: [
-      {
-        id: 'RFD-2026-004809',
-        internalReference: 'CASE-O2C-TARIFF-0061',
-        programme: 'IEEPA',
-        iorName: 'International Motors, LLC',
-        iorNumber: '36-4410987-00',
-        filer: 'Great Lakes Trade Services',
-        contactName: 'Owen Gallagher',
-        contactEmail: 'owen.gallagher@intl-motors.example',
-        entries: [
-          seededEntry('GLT-7730412-5', '2025-04-17', '8708.99.8180', 'Chassis brackets', 41200),
-          seededEntry('GLT-7730598-1', '2025-05-02', '8483.40.5010', 'Gear housings', 28650),
-          seededEntry('GLT-7730844-0', '2025-05-29', '8409.99.9190', 'Cylinder head castings', 36110),
-        ],
-        interestUsd: 4870,
-        interestConfirmed: true,
-        attachments: [{ fileName: 'batch-6-refund-package.pdf', type: 'Refund package', note: '' }],
-        status: STATUS.approved,
-        createdAt: '2026-09-18T14:05:00.000Z',
-        updatedAt: '2026-10-21T16:40:00.000Z',
-        createdBy: 'im.trade.compliance',
-      },
-      {
-        id: 'RFD-2026-004810',
-        internalReference: 'CASE-O2C-TARIFF-0074',
-        programme: 'IEEPA',
-        iorName: 'International Motors, LLC',
-        iorNumber: '36-4410987-00',
-        filer: 'Great Lakes Trade Services',
-        contactName: 'Owen Gallagher',
-        contactEmail: 'owen.gallagher@intl-motors.example',
-        entries: [
-          seededEntry('GLT-7741106-2', '2025-08-06', '8544.42.9090', 'Wiring harness assemblies', 52400),
-          seededEntry('GLT-7741320-7', '2025-08-21', '8512.20.2040', 'Lighting assemblies', 19880),
-        ],
-        interestUsd: 2310,
-        interestConfirmed: true,
-        attachments: [{ fileName: 'batch-7-refund-package.pdf', type: 'Refund package', note: '' }],
-        status: STATUS.submitted,
-        createdAt: '2026-10-07T13:22:00.000Z',
-        updatedAt: '2026-10-09T15:10:00.000Z',
-        createdBy: 'im.trade.compliance',
-      },
-      {
-        id: 'RFD-2026-004811',
-        internalReference: 'CASE-O2C-TARIFF-0081',
-        programme: 'IEEPA',
-        iorName: 'International Motors, LLC',
-        iorNumber: '36-4410987-00',
-        filer: 'Great Lakes Trade Services',
-        contactName: 'Owen Gallagher',
-        contactEmail: 'owen.gallagher@intl-motors.example',
-        entries: [
-          seededEntry('GLT-7752218-4', '2025-10-14', '8481.80.9050', 'Air brake valves', 23760),
-        ],
-        interestUsd: 690,
-        interestConfirmed: true,
-        attachments: [{ fileName: 'supplemental-entry-7752218.pdf', type: 'Entry summary', note: '' }],
-        status: STATUS.submitted,
-        createdAt: '2026-10-20T18:02:00.000Z',
-        updatedAt: '2026-10-22T12:31:00.000Z',
-        createdBy: 'im.trade.compliance',
-      },
+    uploads: [
+      job(118163, 'IM-IEEPA-batch-05.csv', 'Great Lakes Trade Services (filer GLT)', '2026-09-18T14:05:00.000Z', 41, FILE_STATUS.accepted, `CAPE-${YEAR}-004771`, ['GLT-7730412-5', 'GLT-7730598-1']),
+      job(118171, 'IM-IEEPA-batch-06.csv', 'Great Lakes Trade Services (filer GLT)', '2026-10-07T13:22:00.000Z', 36, FILE_STATUS.accepted, `CAPE-${YEAR}-004790`, ['GLT-7741106-2', 'GLT-7741320-7']),
+      job(118188, 'IM-IEEPA-batch-07 (1).csv', 'Great Lakes Trade Services (filer GLT)', '2026-10-09T15:02:00.000Z', 0, FILE_STATUS.failedInitial, null, [], [{ row: 1, entry: '', message: 'Column header must be "Entry Number".' }]),
+      job(118189, 'IM-IEEPA-batch-07.csv', 'Great Lakes Trade Services (filer GLT)', '2026-10-09T15:10:00.000Z', 29, FILE_STATUS.accepted, `CAPE-${YEAR}-004797`, ['GLT-7752218-4', 'GLT-7760031-6']),
+    ],
+    claims: [
+      { claim: `CAPE-${YEAR}-004771`, job: `J-${YEAR}-118163`, submittedAt: '2026-09-18T14:05:00.000Z', submitted: 41, accepted: 41, rejected: 0, status: CLAIM_STATUS.accepted, results: null },
+      { claim: `CAPE-${YEAR}-004790`, job: `J-${YEAR}-118171`, submittedAt: '2026-10-07T13:22:00.000Z', submitted: 36, accepted: 36, rejected: 0, status: CLAIM_STATUS.accepted, results: null },
+      { claim: `CAPE-${YEAR}-004797`, job: `J-${YEAR}-118189`, submittedAt: '2026-10-09T15:10:00.000Z', submitted: 29, accepted: 28, rejected: 1, status: CLAIM_STATUS.acceptedErrors, results: null },
     ],
   };
 }
